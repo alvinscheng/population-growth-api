@@ -1,56 +1,42 @@
 const express = require('express')
 const redis = require('redis');
-const client = redis.createClient();
 const request = require('request');
 const csv = require('csvtojson')
+
+const app = express()
+const client = redis.createClient();
 
 client.on('connect', function() {
   console.log('Redis client connected');
 });
 client.on('error', function (err) {
-  console.log('Error ' + err);
+  console.log('Redis client error ' + err);
 });
-
-const app = express()
 
 app.get('/', (req, res) => {
   const { zip } = req.query
 
   client.get('ZIP-' + zip, function (error, CBSA) {
-    if (error) {
-        console.log(error);
-        throw error;
-    }
+    if (!CBSA) {
+      res.sendStatus(404)
+    } else {
+      client.get('MDIV-' + CBSA, function (error, newCBSA) {
+        const updatedCBSA = newCBSA || CBSA;
 
-    client.get('MDIV-' + CBSA, function (error, newCBSA) {
-      if (error) {
-          console.log(error);
-          throw error;
-      }
-
-      const updatedCBSA = newCBSA || CBSA;
-      
-      client.get('CBSA-' + updatedCBSA, function (error, data) {
-        if (error) {
-            console.log(error);
-            throw error;
-        }
-
-        data = JSON.parse(data)
-        res.json({
-          Zip: zip,
-          CBSA: CBSA,
-          MSA: data.NAME,
-          Pop2015: data.POPESTIMATE2015,
-          Pop2014: data.POPESTIMATE2014
-        })
+        client.get('CBSA-' + updatedCBSA, function (error, data) {
+          data = JSON.parse(data)
+          res.json({
+            Zip: zip,
+            CBSA: CBSA,
+            MSA: data ? data.NAME : 'N/A',
+            Pop2015: data ? data.POPESTIMATE2015 : 'N/A',
+            Pop2014: data ? data.POPESTIMATE2014 : 'N/A'
+          })
+        });
       });
-    });
+    }
   });
 })
-
-
-
 
 app.listen(3000, () => {
   csv()
@@ -68,7 +54,7 @@ app.listen(3000, () => {
       })
     },
     (err) => console.log('err: ', err),
-    () => console.log('complete'))
+    () => console.log('Zip to CBSA caching complete'))
 
   csv()
     .fromStream(request.get('https://s3.amazonaws.com/peerstreet-static/engineering/zip_to_msa/zip_to_cbsa.csv'))
@@ -79,14 +65,7 @@ app.listen(3000, () => {
       })
     },
     (err) => console.log('err: ', err),
-    () => console.log('complete'))
+    () => console.log('CBSA to MSA caching complete'))
 
   console.log('Listening on 3000')
 })
-
-
-
-
-
-// // 1. [Zip to CBSA (csv)](https://s3.amazonaws.com/peerstreet-static/engineering/zip_to_msa/zip_to_cbsa.csv)
-// // 1. [CBSA to MSA (csv)](https://s3.amazonaws.com/peerstreet-static/engineering/zip_to_msa/cbsa_to_msa.csv)
