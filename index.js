@@ -39,7 +39,7 @@ app.get('/', (req, res) => {
   })
 })
 
-const PORT = process.env.REDIS_URL || 3000
+const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
   csv()
     .fromStream(request.get('https://s3.amazonaws.com/peerstreet-static/engineering/zip_to_msa/cbsa_to_msa.csv'))
