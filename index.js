@@ -58,10 +58,9 @@ function cacheData() {
       return new Promise((resolve, reject)=>{
         if (json.LSAD === 'Metropolitan Statistical Area') {
           client.set('CBSA-' + json.CBSA, JSON.stringify(json))
-
-          if (json.MDIV) {
-            client.set('MDIV-' + json.MDIV, json.CBSA)
-          }
+        }
+        if (json.MDIV) {
+          client.set('MDIV-' + json.MDIV, json.CBSA)
         }
         resolve()
       })
