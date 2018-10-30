@@ -3,6 +3,7 @@ const express = require('express')
 const redis = require('redis')
 const request = require('request')
 const csv = require('csvtojson')
+const cron = require('node-cron')
 
 const app = express()
 const client = redis.createClient(process.env.REDIS_URL)
@@ -41,6 +42,16 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => {
+  cacheData()
+  console.log('Listening on ' + PORT)
+})
+
+// Recache every day at 8am
+cron.schedule('0 8 * * *', () => {
+  cacheData()
+})
+
+function cacheData() {
   csv()
     .fromStream(request.get('https://s3.amazonaws.com/peerstreet-static/engineering/zip_to_msa/cbsa_to_msa.csv'))
     .subscribe((json)=>{
@@ -68,6 +79,4 @@ app.listen(PORT, () => {
     },
     (err) => console.log('err: ', err),
     () => console.log('CBSA to MSA caching complete'))
-
-  console.log('Listening on ' + PORT)
-})
+}
